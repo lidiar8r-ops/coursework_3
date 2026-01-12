@@ -73,7 +73,7 @@ def create_database(database_name: str, params: dict):
 
     with conn.cursor() as cur:
         cur.execute("""
-            CREATE TABLE vacansies (
+            CREATE TABLE vacanies (
                 vacansy_id SERIAL PRIMARY KEY,
                 employer_id INT REFERENCES employers (employer_id),
                 vacansy_name VARCHAR(255) NOT NULL,
@@ -104,19 +104,41 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 RETURNING employer_id
                 """,
                 (employer_data['name'], employer_data['site_url'], employer_data['vacancies_url'],
-                employer_data['area']['name'])
+                employer_data['description'],  employer_data['area']['name'])
             )
             employer_id = cur.fetchone()[0]
             vacanies_data = employer['vacanies']
             for vacancy_data in vacanies_data:
+                # 1. Извлекаем данные из salary
+                salary = vacancy_data.get('salary')
+                if isinstance(salary, dict):
+                    salary_from = salary.get('from')
+                    salary_to = salary.get('to')
+                    currency = salary.get('currency')
+                else:
+                    salary_from = None
+                    salary_to = None
+                    currency = None
+
+                # 2. Обрабатываем published_at (может быть dict или str)
+                published_at = vacancy_data.get('published_at')
+                if isinstance(published_at, dict):
+                    published_at = published_at.get('$date')  # если есть ключ $date
+                elif not isinstance(published_at, str):
+                    published_at = None  # если не строка и не dict — ставим None
+
                 cur.execute(
                     """
                     INSERT INTO vacanies (employer_id, vacansy_name, url, salary_from, salary_to, currency, 
                     published_at) VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (employer_id, vacancy_data['name'], vacancy_data['url'], vacancy_data.get('salary', {'from': 0}),
-                     vacancy_data.get('salary', {'to': 0}), vacancy_data.get('salary', {'currency': 0}),
-                     vacancy_data['published_at'])
+                    (employer_id,
+                    vacancy_data['name'],
+                    vacancy_data['url'],
+                    salary_from,
+                    salary_to,
+                    currency,
+                    published_at)
                 )
 
 
