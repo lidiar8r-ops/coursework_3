@@ -1,31 +1,43 @@
-from googleapiclient.discovery import build
 from typing import Any
 import psycopg2
-
-# https://api.hh.ru/employer/{employer_id}
-def get_hh_data(api_key: str, employer_ids: list[str]) -> list[dict[str, Any]]:
-    """Получение данных о компаниях и вакансиях с помощью API Key."""
-
-    hh = build('hh', 'v3', developerKey=api_key)
+import requests
+# https://api.hh.ru/employers/{employer_id}
+# def get_hh_data(api_key: str, employer_ids: list[str]) -> list[dict[str, Any]]:
+def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
+    """Получение данных о компаниях и вакансиях с помощью API """
 
     data = []
     for employer_id in employer_ids:
-        employer_data = hh.employers().list(part='snippet, statistics', id=employer_id).execute()
+        url = f"https://api.hh.ru/employers/{employer_id}"
 
-        vacanies_data = []
-        while True:
-            response = hh.search().list(part='id,snippet', employerId=employer_id, type='vacancy',
-                                             order='date', maxResults=50, pageToken=next_page_token).execute()
-            vacanies_data.extend(response['items'])
-            next_page_token = response.get('nextPageToken')
-            if not next_page_token:
-                break
+        try:
+            vacanies_data = []
+            # while True:
+            response = requests.get(url)
 
-        data.append({
-            'employer': employer_data['items'][0],
-            'vacanies': vacanies_data
-        })
+            if response.status_code == 200:
+                employer_data = response.json()
+                if not isinstance(employer_data, dict):
+                    logger.error("Ответ API не является словарём")
+                    return None
 
+            response_vacancy = requests.get(employer_data['vacancies_url'])
+            if response_vacancy.status_code == 200:
+                vacanies_data = response_vacancy.json()
+                if not isinstance(employer_data, dict):
+                    logger.error(f"Отсутствуют вакансии у работадателя {employer_data['name']}")
+                # return None
+            vacanies_data.extend(requests.get(url, params=params))
+            # next_page_token = response.get('nextPageToken')
+            # if not next_page_token:
+            #     break
+
+            data.append({
+                'employer': employer_data, #['items'][0],
+                'vacanies': vacanies_data
+            })
+        except Exception as e:
+            print(e)
     return data
 
 
