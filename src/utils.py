@@ -1,6 +1,12 @@
 from typing import Any
 import psycopg2
 import requests
+
+from src import app_logger
+
+# Настройка логирования
+logger = app_logger.get_logger("utils.log")
+
 # https://api.hh.ru/employers/{employer_id}
 # def get_hh_data(api_key: str, employer_ids: list[str]) -> list[dict[str, Any]]:
 def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
@@ -20,24 +26,22 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 if not isinstance(employer_data, dict):
                     logger.error("Ответ API не является словарём")
                     return None
+                # print(employer_data)
+                # print(employer_data['vacancies_url'])
 
             response_vacancy = requests.get(employer_data['vacancies_url'])
             if response_vacancy.status_code == 200:
                 vacanies_data = response_vacancy.json()
-                if not isinstance(employer_data, dict):
-                    logger.error(f"Отсутствуют вакансии у работадателя {employer_data['name']}")
-                # return None
-            vacanies_data.extend(requests.get(url, params=params))
-            # next_page_token = response.get('nextPageToken')
-            # if not next_page_token:
-            #     break
-
+                # if not isinstance(vacanies_data, dict):
+                #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
+                # print("="*20)
+                # print(vacanies_data)
             data.append({
                 'employer': employer_data, #['items'][0],
-                'vacanies': vacanies_data
+                'vacanies': vacanies_data['items']
             })
         except Exception as e:
-            print(e)
+            logger.error(e)
     return data
 
 
@@ -48,7 +52,7 @@ def create_database(database_name: str, params: dict):
     conn.autocommit = True
     cur = conn.cursor()
 
-    cur.execute(f"DROP DATABASE {database_name}")
+    cur.execute(f"DROP DATABASE IF EXISTS {database_name}")
     cur.execute(f"CREATE DATABASE {database_name}")
 
     conn.close()
@@ -76,8 +80,7 @@ def create_database(database_name: str, params: dict):
                 url TEXT, 
                 salary_from VARCHAR(30),
                 salary_to VARCHAR(30),
-                currency VARCHAR(5)
-                description VARCHAR(355),                
+                currency VARCHAR(5),           
                 published_at DATE                
             )
         """)
@@ -101,18 +104,18 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 RETURNING employer_id
                 """,
                 (employer_data['name'], employer_data['site_url'], employer_data['vacancies_url'],
-                 employer_data['description'], {employer['area']['name']})
+                employer_data['area']['name'])
             )
             employer_id = cur.fetchone()[0]
             vacanies_data = employer['vacanies']
             for vacancy_data in vacanies_data:
                 cur.execute(
                     """
-                    INSERT INTO vacanies (employer_id, vacansy_name, url, salary_from, salary_to, currency, description, 
-                    published_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO vacanies (employer_id, vacansy_name, url, salary_from, salary_to, currency, 
+                    published_at) VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (employer_id, vacancy_data['name'], vacancy_data['url'], vacancy_data['salary']['from'],
-                     vacancy_data['salary']['to'], vacancy_data['salary']['currency'], vacancy_data['description'],
+                    (employer_id, vacancy_data['name'], vacancy_data['url'], vacancy_data.get('salary', {'from': 0}),
+                     vacancy_data.get('salary', {'to': 0}), vacancy_data.get('salary', {'currency': 0}),
                      vacancy_data['published_at'])
                 )
 
