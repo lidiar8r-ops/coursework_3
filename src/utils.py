@@ -7,8 +7,6 @@ from src import app_logger
 # Настройка логирования
 logger = app_logger.get_logger("utils.log")
 
-# https://api.hh.ru/employers/{employer_id}
-# def get_hh_data(api_key: str, employer_ids: list[str]) -> list[dict[str, Any]]:
 def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
     """Получение данных о компаниях и вакансиях с помощью API """
 
@@ -26,16 +24,13 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 if not isinstance(employer_data, dict):
                     logger.error("Ответ API не является словарём")
                     return None
-                # print(employer_data)
-                # print(employer_data['vacancies_url'])
 
             response_vacancy = requests.get(employer_data['vacancies_url'])
             if response_vacancy.status_code == 200:
                 vacanies_data = response_vacancy.json()
                 # if not isinstance(vacanies_data, dict):
                 #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
-                # print("="*20)
-                # print(vacanies_data)
+
             data.append({
                 'employer': employer_data, #['items'][0],
                 'vacanies': vacanies_data['items']
@@ -52,8 +47,18 @@ def create_database(database_name: str, params: dict):
     conn.autocommit = True
     cur = conn.cursor()
 
-    cur.execute(f"DROP DATABASE IF EXISTS {database_name}")
-    cur.execute(f"CREATE DATABASE {database_name}")
+    try:
+        cur.execute(f'DROP DATABASE IF EXISTS {database_name}')
+        cur.execute(f'CREATE DATABASE {database_name}')
+    except psycopg2.errors.ObjectInUse:
+        cur.execute(f"""
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity WHERE datname = '{database_name}' AND pid <> pg_backend_pid();
+        """)
+        cur.execute(f'DROP DATABASE {database_name}')
+        cur.execute(f'CREATE DATABASE {database_name}')
+    except psycopg2.errors.InvalidCatalogName:
+        cur.execute(f'CREATE DATABASE {database_name}')
 
     conn.close()
 
@@ -112,13 +117,13 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 # 1. Извлекаем данные из salary
                 salary = vacancy_data.get('salary')
                 if isinstance(salary, dict):
-                    salary_from = salary.get('from')
-                    salary_to = salary.get('to')
-                    currency = salary.get('currency')
+                    salary_from = salary.get('from', 0)
+                    salary_to = salary.get('to', 0)
+                    currency = salary.get('currency', ' ')
                 else:
-                    salary_from = None
-                    salary_to = None
-                    currency = None
+                    salary_from = 0
+                    salary_to = 0
+                    currency = 'RUR'
 
                 # 2. Обрабатываем published_at (может быть dict или str)
                 published_at = vacancy_data.get('published_at')
