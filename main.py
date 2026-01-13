@@ -1,9 +1,9 @@
 import os
 
+from src.db_manager import DBManager
 from src.utils import get_hh_data, create_database, save_data_to_database
 from src.config import config
 from src import app_logger
-from src.api_hh import HeadHunterAPI
 
 
 # Настройка логирования
@@ -26,11 +26,15 @@ def main():
     ]
     params = config()
 
-    data = get_hh_data(employer_ids)
-    # print(data)
-    create_database('hh_ru', params)
-    save_data_to_database(data, 'hh_ru', params)
-    print('запись в базу окончена')
+    # data = get_hh_data(employer_ids)
+    # # print(data)
+    # create_database('hh_ru', params)
+    # save_data_to_database(data, 'hh_ru', params)
+    # print('запись в базу окончена')
+    db_manager = DBManager('hh_ru', params)
+    print(db_manager.get_companies_and_vacancies_count())
+    print(db_manager.get_companies_and_vacancies_count())
 
+    db_manager.close_conn()
 if __name__ == '__main__':
     main()
