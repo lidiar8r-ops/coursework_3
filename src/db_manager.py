@@ -26,12 +26,13 @@ class DBManager():
         self.db_name = db_name
         self.params = params
         self.conn = psycopg2.connect(dbname=db_name, **params)
+        self.conn.autocommit = True
 
-    def close_conn(self, conn):
+    def close_conn(self):
         self.conn.close()
 
     def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
-        """ — получает список всех компаний и количество вакансий у каждой компании."""
+        """ получает список всех компаний и количество вакансий у каждой компании."""
         data_employers = []
 
         with self.conn.cursor() as cur:
@@ -42,8 +43,6 @@ class DBManager():
                     GROUP BY employer_id
                     ) as  vacansies Using(employer_id);
             """)
-            # data_employer.append(cur.fetchall()[0])RETURNING employer_name, count_vac
-            # data_count.append(cur.fetchall()[1])
             # data_employers.append({
             #     'employer_name': cur.fetchall()[0],
             #     'count_vacansies': cur.fetchall()[1]
@@ -59,14 +58,15 @@ class DBManager():
         with self.conn.cursor() as cur:
             cur.execute("""
                 select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url  from employers 
-                left join vacansies on Using(employer_id)  
+                left join vacansies Using(employer_id)  
             """)
-            data_employers.append({
-                'employer_name': cur.fetchall()[0],
-                'vacansy_name': cur.fetchall()[1],
-                'salary': cur.fetchall()[2],
-                'url': cur.fetchall()[3],
-            })
+            data_employers = cur.fetchall()
+            # data_employers.append({
+            #     'employer_name': data_employers[0],
+            #     'vacansy_name': data_employers[1],
+            #     'salary': data_employers[2],
+            #     'url': data_employers[3],
+            # })
         return data_employers
 
 
