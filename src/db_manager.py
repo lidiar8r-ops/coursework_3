@@ -60,7 +60,10 @@ class DBManager(DBClass):
         salary_avg = 0
         with self.conn.cursor() as cur:
             cur.execute("""
-                        select avg(salary_from) avg_salary_from, avg(salary_to) avg_salary_to from vacansies
+                       SELECT
+                            round(AVG(salary_from::numeric),2) AS avg_salary_from,
+                            round(AVG(salary_to::numeric),2) AS avg_salary_to
+                        FROM vacansies;
                     """)
             salary_avg = cur.fetchall()[0]
         return salary_avg
