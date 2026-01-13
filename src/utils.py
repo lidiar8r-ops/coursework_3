@@ -15,7 +15,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
         url = f"https://api.hh.ru/employers/{employer_id}"
 
         try:
-            vacanies_data = []
+            vacansies_data = []
             # while True:
             response = requests.get(url)
 
@@ -27,13 +27,13 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
 
             response_vacancy = requests.get(employer_data['vacancies_url'])
             if response_vacancy.status_code == 200:
-                vacanies_data = response_vacancy.json()
-                # if not isinstance(vacanies_data, dict):
+                vacansies_data = response_vacancy.json()
+                # if not isinstance(vacansies_data, dict):
                 #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
 
             data.append({
                 'employer': employer_data, #['items'][0],
-                'vacanies': vacanies_data['items']
+                'vacansies': vacansies_data['items']
             })
         except Exception as e:
             logger.error(e)
@@ -78,7 +78,7 @@ def create_database(database_name: str, params: dict):
 
     with conn.cursor() as cur:
         cur.execute("""
-            CREATE TABLE vacanies (
+            CREATE TABLE vacansies (
                 vacansy_id SERIAL PRIMARY KEY,
                 employer_id INT REFERENCES employers (employer_id),
                 vacansy_name VARCHAR(255) NOT NULL,
@@ -112,8 +112,8 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 employer_data['description'],  employer_data['area']['name'])
             )
             employer_id = cur.fetchone()[0]
-            vacanies_data = employer['vacanies']
-            for vacancy_data in vacanies_data:
+            vacansies_data = employer['vacansies']
+            for vacancy_data in vacansies_data:
                 # 1. Извлекаем данные из salary
                 salary = vacancy_data.get('salary')
                 if isinstance(salary, dict):
@@ -134,7 +134,7 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
 
                 cur.execute(
                     """
-                    INSERT INTO vacanies (employer_id, vacansy_name, url, salary_from, salary_to, currency, 
+                    INSERT INTO vacansies (employer_id, vacansy_name, url, salary_from, salary_to, currency, 
                     published_at) VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
                     (employer_id,
