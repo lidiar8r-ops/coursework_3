@@ -5,23 +5,7 @@ from abc import ABC
 from typing import Any
 
 
-# class DBClass(ABC):
-#     def __init__(self, db_name, params):
-#         self.db_name = db_name
-#         self.params = params
-#         self.conn = psycopg2.connect(db_name, params)
-#
-#     def close_conn(self, conn):
-#         self.conn.close()
-
-class DBManager():
-    # def __init__(self, db_name, params):
-    #     super().__init__(db_name, params)
-    #     self.conn.autocommit = True
-    #
-    #
-    # def close_conn(self, conn):
-    #     super().__init__(conn)
+class DBClass(ABC):
     def __init__(self, db_name, params):
         self.db_name = db_name
         self.params = params
@@ -30,6 +14,17 @@ class DBManager():
 
     def close_conn(self):
         self.conn.close()
+
+
+
+class DBManager(DBClass):
+    def __init__(self, db_name, params):
+        super().__init__(db_name, params)
+
+
+    def close_conn(self):
+        super().close_conn()
+
 
     def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
         """ получает список всех компаний и количество вакансий у каждой компании."""
@@ -43,10 +38,6 @@ class DBManager():
                     GROUP BY employer_id
                     ) as  vacansies Using(employer_id);
             """)
-            # data_employers.append({
-            #     'employer_name': cur.fetchall()[0],
-            #     'count_vacansies': cur.fetchall()[1]
-            # })
             data_employers = cur.fetchall()
         return data_employers
 
@@ -61,17 +52,11 @@ class DBManager():
                 left join vacansies Using(employer_id)  
             """)
             data_employers = cur.fetchall()
-            # data_employers.append({
-            #     'employer_name': data_employers[0],
-            #     'vacansy_name': data_employers[1],
-            #     'salary': data_employers[2],
-            #     'url': data_employers[3],
-            # })
         return data_employers
 
 
     def get_avg_salary(self) -> int:
-        """ — получает среднюю зарплату по вакансиям."""
+        """ получает среднюю зарплату по вакансиям."""
         salary_avg = 0
         with self.conn.cursor() as cur:
             cur.execute("""

@@ -51,15 +51,15 @@ def main():
         print(f"{i}. '{row[0]}' вакансия {row[1]} зарплаты {row[2]} ссылка на вакансию {row[3]}")
 
     print("\n", "=" * 30)
-    print("Список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию:")
-    rows =  db_manager.get_all_vacancies()
-    i = 0
+    print("Получим среднюю зарплату по вакансиям ")
+    rows =  db_manager.get_avg_salary()
     for row in rows:
-        i += 1
-        print(f"{i}. '{row[0]}' вакансия {row[1]} зарплаты {row[2]} ссылка на вакансию {row[3]}")
+        print(f"С редняя зарплата {row[0]}")
 
 
 
     db_manager.close_conn()
+
+
 if __name__ == '__main__':
     main()
