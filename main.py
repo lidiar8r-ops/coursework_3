@@ -22,16 +22,16 @@ def main():
         '6163006',  # Академия Компьютерных Технологий и Дизайна
         '67788',  # Челябинский кузнечно-прессовый завод (ЧКПЗ)
         '11918231',  #ООО СИТР
-        '1035394',  # Красное & Белое, розничная сеть
+        # '1035394',  # Красное & Белое, розничная сеть
         # '2180',  # ОЗОН
     ]
     params = config()
 
-    # data = get_hh_data(employer_ids)
-    # # print(data)
-    # create_database('hh_ru', params)
-    # save_data_to_database(data, 'hh_ru', params)
-    # print('запись в базу окончена')
+    data = get_hh_data(employer_ids)
+    # print(data)
+    create_database('hh_ru', params)
+    save_data_to_database(data, 'hh_ru', params)
+    print('запись в базу окончена')
 
     db_manager = DBManager('hh_ru', params)
 
@@ -55,7 +55,8 @@ def main():
     print("Получим среднюю зарплату по вакансиям ")
     rows =  db_manager.get_avg_salary()
     for row in rows:
-        print(f"С редняя зарплата {row[0]}")
+        print(f"Средняя зарплата {row}")
+
 
 
 

@@ -24,6 +24,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                     break
             vacansies_data = []
 
+            # print(employer_data)
             # https://api.hh.ru/employers/{employer_id}/vacancies/active
             # "vacancies_url": "https://api.hh.ru/vacancies?employer_id=32575"
             # response_vacancy = requests.get(f"{employer_data['vacancies_url']}&)
@@ -32,7 +33,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
             #     # if not isinstance(vacansies_data, dict):
             #     #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
 
-            url = f"https://api.hh.ru/vacancies"
+
             params = {
                 "employer_id": employer_id,
                 "per_page": 100,  # Макс. 100 на страницу
@@ -40,23 +41,34 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
             }
             all_vacancies = []
             while True:
-                response = requests.get(url, params=params)
-                vacansies_data = response.json()
+                # url = f"https://api.hh.ru/vacancies?per_page=100&employer_id={employer_id}&page={params['page']}"
+                url = f"https://api.hh.ru/vacancies"
 
-                if not data["items"]:
+                response = requests.get(url, params=params)  # , params=params
+                if response.status_code == 200:
+                    vacansies_data = response.json()
+                    print(url,params)
+                    # print(vacansies_data)
+
+                if not vacansies_data["items"]:
                     break
 
                 all_vacancies.extend(vacansies_data["items"])
                 params["page"] += 1
 
+
                 # Ограничение API: не более 2000 вакансий
-                if len(all_vacancies) >= 2000:
+                if len(all_vacancies) >= 500:
                     break
 
+
+            # print(all_vacancies)
             data.append({
                 'employer': employer_data, #['items'][0],
                 'vacansies': all_vacancies  #['items']
             })
+
+
         except Exception as e:
             logger.error(e)
     return data
@@ -82,7 +94,7 @@ def create_database(database_name: str, params: dict):
     except psycopg2.errors.InvalidCatalogName:
         cur.execute(f'CREATE DATABASE {database_name}')
 
-    cur.close()
+    # cur.close()
     conn.close()
 
     conn = psycopg2.connect(dbname=database_name, **params)
