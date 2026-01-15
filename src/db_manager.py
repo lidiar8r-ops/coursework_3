@@ -12,9 +12,9 @@ class DBClass(ABC):
         self.conn = psycopg2.connect(dbname=db_name, **params)
         self.conn.autocommit = True
 
+
     def close_conn(self):
         self.conn.close()
-
 
 
 class DBManager(DBClass):
@@ -39,6 +39,7 @@ class DBManager(DBClass):
                     ) as  vacansies Using(employer_id);
             """)
             data_employers = cur.fetchall()
+            # cur.close()
         return data_employers
 
 
@@ -66,6 +67,7 @@ class DBManager(DBClass):
                         FROM vacansies;
                     """)
             salary_avg = cur.fetchall()[0]
+
         return salary_avg
 
 

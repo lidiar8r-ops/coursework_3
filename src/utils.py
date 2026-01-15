@@ -15,25 +15,47 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
         url = f"https://api.hh.ru/employers/{employer_id}"
 
         try:
-            vacansies_data = []
-            # while True:
             response = requests.get(url)
 
             if response.status_code == 200:
                 employer_data = response.json()
                 if not isinstance(employer_data, dict):
                     logger.error("Ответ API не является словарём")
-                    return None
+                    break
+            vacansies_data = []
 
-            response_vacancy = requests.get(employer_data['vacancies_url'])
-            if response_vacancy.status_code == 200:
-                vacansies_data = response_vacancy.json()
-                # if not isinstance(vacansies_data, dict):
-                #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
+            # https://api.hh.ru/employers/{employer_id}/vacancies/active
+            # "vacancies_url": "https://api.hh.ru/vacancies?employer_id=32575"
+            # response_vacancy = requests.get(f"{employer_data['vacancies_url']}&)
+            # if response_vacancy.status_code == 200:
+            #     vacansies_data = response_vacancy.json()
+            #     # if not isinstance(vacansies_data, dict):
+            #     #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
+
+            url = f"https://api.hh.ru/vacancies"
+            params = {
+                "employer_id": employer_id,
+                "per_page": 100,  # Макс. 100 на страницу
+                "page": 0
+            }
+            all_vacancies = []
+            while True:
+                response = requests.get(url, params=params)
+                vacansies_data = response.json()
+
+                if not data["items"]:
+                    break
+
+                all_vacancies.extend(vacansies_data["items"])
+                params["page"] += 1
+
+                # Ограничение API: не более 2000 вакансий
+                if len(all_vacancies) >= 2000:
+                    break
 
             data.append({
                 'employer': employer_data, #['items'][0],
-                'vacansies': vacansies_data['items']
+                'vacansies': all_vacancies  #['items']
             })
         except Exception as e:
             logger.error(e)
@@ -60,9 +82,11 @@ def create_database(database_name: str, params: dict):
     except psycopg2.errors.InvalidCatalogName:
         cur.execute(f'CREATE DATABASE {database_name}')
 
+    cur.close()
     conn.close()
 
     conn = psycopg2.connect(dbname=database_name, **params)
+    conn.autocommit = True
 
     with conn.cursor() as cur:
         cur.execute("""
@@ -85,6 +109,7 @@ def create_database(database_name: str, params: dict):
                 url TEXT, 
                 salary_from VARCHAR(30),
                 salary_to VARCHAR(30),
+                salary_avg REAL,
                 currency VARCHAR(5),           
                 published_at DATE                
             )
@@ -117,12 +142,32 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 # 1. Извлекаем данные из salary
                 salary = vacancy_data.get('salary')
                 if isinstance(salary, dict):
-                    salary_from = salary.get('from', 0)
-                    salary_to = salary.get('to', 0)
+                    # salary_from = salary.get('from', 0)
+                    # salary_to = salary.get('to', 0)
                     currency = salary.get('currency', ' ')
+                    # Пытаемся преобразовать, если не число — пропускаем
+                    try:
+                        salary_from = float(salary_from) if salary_from is not None else 0
+                    except (TypeError, ValueError):
+                        salary_from = 0
+                    try:
+                        salary_to = float(salary_to) if salary_to is not None else 0
+                    except (TypeError, ValueError):
+                        salary_to = 0
+
+                    if salary_from > 0 and salary_to > 0:
+                        salary_avg = (salary_from + salary_to) / 2
+                    elif salary_from > 0:
+                        salary_avg = salary_from
+                    elif salary_to > 0:
+                        salary_avg = salary_to
+                    else:
+                        salary_avg = 0
+
                 else:
                     salary_from = 0
                     salary_to = 0
+                    salary_avg = 0
                     currency = 'RUR'
 
                 # 2. Обрабатываем published_at (может быть dict или str)
@@ -132,19 +177,21 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 elif not isinstance(published_at, str):
                     published_at = None  # если не строка и не dict — ставим None
 
-                cur.execute(
-                    """
-                    INSERT INTO vacansies (employer_id, vacansy_name, url, salary_from, salary_to, currency, 
-                    published_at) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (employer_id,
-                    vacancy_data['name'],
-                    vacancy_data['url'],
-                    salary_from,
-                    salary_to,
-                    currency,
-                    published_at)
-                )
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO vacansies (employer_id, vacansy_name, url, salary_from, salary_to, salary_avg, currency, 
+                        published_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        (employer_id,
+                        vacancy_data['name'],
+                        vacancy_data['url'],
+                        salary_from,
+                        salary_to,
+                        salary_avg,
+                        currency,
+                        published_at)
+                    )
 
 
     conn.commit()
