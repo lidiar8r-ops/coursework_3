@@ -14,12 +14,12 @@ class DBClass(ABC):
         self.db_name = db_name
         self.params = params
 
-    def close_conn(self):
+    def close_conn(self) -> None:
         self.conn.close()
 
 
 class DBManager(DBClass):
-    def __init__(self, db_name, params):
+    def __init__(self, db_name, params) -> None:
         super().__init__(db_name, params)
         self.salary_avg = 0
 
@@ -30,7 +30,7 @@ class DBManager(DBClass):
             print(f"БД '{db_name}' не существует или недоступна!")
             raise ValueError(f"БД '{db_name}' не существует или недоступна!")
 
-    def _database_exists(self, db_name, params):
+    def _database_exists(self, db_name: str, params: dict) -> bool:
         """Проверяет, существует ли БД в кластере PostgreSQL."""
         try:
             # Подключаемся к БД
@@ -49,8 +49,9 @@ class DBManager(DBClass):
             logger.error(f"Ошибка при проверке существования БД: {e}")
             return False
 
-    def close_conn(self):
+    def close_conn(self) -> None:
         super().close_conn()
+
 
     @staticmethod
     def print_vacancies(vacancies: list[dict]) -> None:
@@ -67,9 +68,13 @@ class DBManager(DBClass):
 
         print("-" * 50)
 
+
     def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
         """получает список всех компаний и количество вакансий у каждой компании."""
         data_employers = []
+
+        if self.conn is None:
+            raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
             cur.execute(
@@ -89,6 +94,9 @@ class DBManager(DBClass):
         сылки на вакансию."""
         data_employers = []
 
+        if self.conn is None:
+            raise ValueError("Соединение с БД не установлено")
+
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -100,9 +108,13 @@ class DBManager(DBClass):
             data_employers = cur.fetchall()
         return data_employers
 
+
     def get_avg_salary(self) -> int:
         """получает среднюю зарплату по вакансиям."""
         self.salary_avg = 0
+        if self.conn is None:
+            raise ValueError("Соединение с БД не установлено")
+
         with self.conn.cursor() as cur:
             cur.execute(
                 """
@@ -115,9 +127,13 @@ class DBManager(DBClass):
 
         return self.salary_avg
 
+
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
         """получает cписок всех вакансий, у которых зарплата выше средней по всем вакансиям."""
         self.salary_avg = self.get_avg_salary()[0]
+
+        if self.conn is None:
+            raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
             cur.execute(
@@ -170,6 +186,9 @@ class DBManager(DBClass):
             f" LEFT JOIN employers Using(employer_id)  {select_words}"
         )
         print(select_words)
+
+        if self.conn is None:
+            raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
             cur.execute(select_words)

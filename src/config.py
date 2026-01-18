@@ -1,6 +1,7 @@
 # Настройки БД
 import os
 from configparser import ConfigParser
+from typing import Any, Dict
 
 # Пути к файлам
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,16 +16,34 @@ filename_vacan = os.path.join(DATA_DIR, "vacancies.json")
 area_hh = 104  # Челябинск
 
 
-def config(filename="database.ini", section="postgresql"):
-    # create a parser
+
+def config(
+    filename: str = "database.ini",
+    section: str = "postgresql"
+) -> Dict[str, Any]:
+    """
+    Читает параметры подключения к БД из INI‑файла.
+
+    Args:
+        filename: Путь к INI‑файлу (по умолчанию 'database.ini').
+        section: Секция с параметрами БД (по умолчанию 'postgresql').
+
+    Returns:
+        Словарь с параметрами подключения (например, host, database, user, password).
+
+    Raises:
+        FileNotFoundError: Если файл не найден.
+        ValueError: Если секция не найдена в файле.
+    """
+    # Создаём парсер
     parser = ConfigParser()
-    # read config file
-    parser.read(filename)
-    db = {}
+
+    # Пытаемся прочитать файл
+    if not parser.read(filename):
+        raise FileNotFoundError(f"Файл конфигурации не найден: {filename}")
+
     if parser.has_section(section):
         params = parser.items(section)
-        for param in params:
-            db[param[0]] = param[1]
+        return {param[0]: param[1] for param in params}
     else:
-        raise Exception("Section {0} is not found in the {1} file.".format(section, filename))
-    return db
+        raise ValueError(f"Секция '{section}' не найдена в файле '{filename}'")
