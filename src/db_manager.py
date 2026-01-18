@@ -86,10 +86,24 @@ class DBManager(DBClass):
 
 
     def get_vacancies_with_keyword(self, list_words: list) -> list[dict[str, Any]]:
-        """— получает список всех вакансий, в названии которых содержатся переданные в метод слова, например python."""
+        """ список всех вакансий, в названии которых содержатся переданные в метод слова, например python."""
         data = []
+        select_words = ""
+        if len(list_words):
+            select_words = " WHERE "
+
+            for word in list_words:
+                if select_words != " WHERE ":
+                    select_words += " or "
+                select_words += f" UPPER(vacansy_name) like UPPER('%{word}%')"
+
+        select_words = (f"SELECT employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
+                        f" FROM vacansies "
+                        f" LEFT JOIN employers Using(employer_id)  {select_words}")
+        # print(select_words)
+
         with self.conn.cursor() as cur:
-            cur.execute(f"select vacansy_name  from  vacansies where vacansy_name like in ({list_words})")
+            cur.execute(select_words)
             data = cur.fetchall()
 
         return data

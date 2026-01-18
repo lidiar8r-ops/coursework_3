@@ -35,21 +35,21 @@ def main():
 
     db_manager = DBManager('hh_ru', params)
 
-    # print("\n", "=" * 30)
-    # print("Список всех компаний c количеством вакансий:" )
-    # rows = db_manager.get_companies_and_vacancies_count()
-    # i = 0
-    # for row in rows:
-    #     i += 1
-    #     print(f"{i}. '{row[0]}' вакансий {row[1]}")
-    #
-    # print("\n", "=" * 30)
-    # print("Список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию:")
-    # rows =  db_manager.get_all_vacancies()
-    # i = 0
-    # for row in rows:
-    #     i += 1
-    #     print(f"{i}. '{row[0]}' вакансия {row[1]} зарплаты {row[2]} ссылка на вакансию {row[3]}")
+    print("\n", "=" * 30)
+    print("Список всех компаний c количеством вакансий:" )
+    rows = db_manager.get_companies_and_vacancies_count()
+    i = 0
+    for row in rows:
+        i += 1
+        print(f"{i}. '{row[0]}' вакансий {row[1]}")
+
+    print("\n", "=" * 30)
+    print("Список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию:")
+    rows =  db_manager.get_all_vacancies()
+    i = 0
+    for row in rows:
+        i += 1
+        print(f"{i}. '{row[0]}' вакансия {row[1]} зарплаты {row[2]} ссылка на вакансию {row[3]}")
 
     print("\n", "=" * 30)
     print("Получим среднюю зарплату по вакансиям ")
@@ -57,9 +57,16 @@ def main():
     print(f"Средняя зарплата {rows[0]}")
 
     print("\n", "=" * 30)
-    print("Список всех вакансий, у которых зарплата выше средней по всем вакансиям, с указанием названия компании, "
-          "названия вакансии и зарплаты и ссылки на вакансию:")
+    print("Список всех вакансий, у которых зарплата выше средней по всем вакансиям:")
     rows = db_manager.get_vacancies_with_higher_salary()
+    i = 0
+    for row in rows:
+        i += 1
+        print(f"{i}. '{row[0]}' вакансия {row[1]} зарплаты {row[2]} ссылка на вакансию {row[3]}")
+
+    print("\n", "=" * 30)
+    print("Список всех вакансий, в названии которых содержатся переданные в метод слова, например python:")
+    rows = db_manager.get_vacancies_with_keyword(['программист', 'python' , 'курьер'])
     i = 0
     for row in rows:
         i += 1
