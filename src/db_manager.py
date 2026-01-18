@@ -26,11 +26,10 @@ class DBManager(DBClass):
 
         # Проверяем существование БД перед подключением
         if not self._database_exists(db_name, params):
-            # raise ValueError(f"БД '{db_name}' не существует или недоступна!")
+            #
             logger.error(f"БД '{db_name}' не существует или недоступна!")
             print(f"БД '{db_name}' не существует или недоступна!")
-            return None
-
+            raise ValueError(f"БД '{db_name}' не существует или недоступна!")
 
     def _database_exists(self, db_name, params):
         """Проверяет, существует ли БД в кластере PostgreSQL."""
@@ -51,7 +50,7 @@ class DBManager(DBClass):
             return exists
 
         except Exception as e:
-            print(f"Ошибка при проверке существования БД: {e}")
+            logger.error(f"Ошибка при проверке существования БД: {e}")
             return False
 
     def _create_connection(self, db_name, params):

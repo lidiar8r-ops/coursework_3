@@ -53,10 +53,9 @@ def main():
             print('Запись в базу завершена')
 
         elif choice == "2" or choice == "3" or choice == "4" or choice == "5" or choice == "6":
-            db_manager = DBManager('hh_ru1', params)
-            if not db_manager:
-                print("Сперва создайте БД, выбрав пункт 1")
-            else:
+            try:
+                db_manager = DBManager('hh_ru1', params)
+
                 if choice == "2":
                     print("\n", "=" * 30)
                     print("Список всех компаний с количеством вакансий:")
@@ -89,10 +88,11 @@ def main():
                     rows = db_manager.get_vacancies_with_keyword(['программист', 'python', 'курьер'])
                     db_manager.print_vacancies(rows)
 
-            db_manager.close_conn()  # Закрываем соединение после всех операций
+                db_manager.close_conn()  # Закрываем соединение после всех операций
+            except Exception as e:
+                print("Сперва создайте БД, выбрав пункт 1")
 
         elif choice == "7":
-            db_manager.close_conn()  # Закрываем соединение после всех операций
             print("Завершение работы...")
             break
 
