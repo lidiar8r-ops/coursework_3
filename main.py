@@ -69,7 +69,7 @@ def main():
                     print("\n", "=" * 30)
                     print("Средняя зарплата по вакансиям:")
                     avg_salary = db_manager.get_avg_salary()
-                    print(f"Средняя зарплата: {avg_salary[0] if avg_salary else 'Нет данных'}")
+                    print(f"Средняя зарплата: {avg_salary if avg_salary else 'Нет данных'}")
 
                 elif choice == "5":
                     print("\n", "=" * 30)

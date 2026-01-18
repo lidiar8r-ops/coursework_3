@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any
+from typing import Any, Dict, List
 
 import psycopg2
 
@@ -10,22 +10,24 @@ logger = app_logger.get_logger("db_manager.log")
 
 
 class DBClass(ABC):
-    def __init__(self, db_name, params):
+    def __init__(self, db_name: str, params: Dict[str, Any]) -> None:
         self.db_name = db_name
         self.params = params
+        self.conn = None
+        self.cursor = None
 
     def close_conn(self) -> None:
-        self.conn.close()
+        if self.conn is not None:
+            self.conn.close()
 
 
 class DBManager(DBClass):
-    def __init__(self, db_name, params) -> None:
+    def __init__(self, db_name: str, params: Dict[str, Any]) -> None:
         super().__init__(db_name, params)
-        self.salary_avg = 0
+        self.salary_avg = 0.0
 
         # Проверяем существование БД перед подключением
         if not self._database_exists(db_name, params):
-            #
             logger.error(f"БД '{db_name}' не существует или недоступна!")
             print(f"БД '{db_name}' не существует или недоступна!")
             raise ValueError(f"БД '{db_name}' не существует или недоступна!")
@@ -35,6 +37,10 @@ class DBManager(DBClass):
         try:
             # Подключаемся к БД
             self.conn = psycopg2.connect(dbname=db_name, **params)
+            # Явная проверка, что conn не None
+            if self.conn is None:
+                return False  # Или поднять исключение
+
             self.conn.autocommit = True
             cur = self.conn.cursor()
 
@@ -71,7 +77,7 @@ class DBManager(DBClass):
 
     def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
         """получает список всех компаний и количество вакансий у каждой компании."""
-        data_employers = []
+        data_employers: List[Dict[str, Any]] = []
 
         if self.conn is None:
             raise ValueError("Соединение с БД не установлено")
@@ -92,7 +98,7 @@ class DBManager(DBClass):
     def get_all_vacancies(self) -> list[dict[str, Any]]:
         """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и
         сылки на вакансию."""
-        data_employers = []
+        data_employers: List[Dict[str, Any]] = []
 
         if self.conn is None:
             raise ValueError("Соединение с БД не установлено")
@@ -109,7 +115,7 @@ class DBManager(DBClass):
         return data_employers
 
 
-    def get_avg_salary(self) -> int:
+    def get_avg_salary(self) -> float:
         """получает среднюю зарплату по вакансиям."""
         self.salary_avg = 0
         if self.conn is None:
@@ -123,14 +129,18 @@ class DBManager(DBClass):
                         FROM vacansies;
                     """
             )
-            self.salary_avg = cur.fetchall()[0]
-
+            result = cur.fetchone()
+            if result and result[0] is not None:
+                # Преобразуем Decimal в float
+                self.salary_avg = float(result[0])
+            else:
+                self.salary_avg = 0.0
         return self.salary_avg
 
 
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
         """получает cписок всех вакансий, у которых зарплата выше средней по всем вакансиям."""
-        self.salary_avg = self.get_avg_salary()[0]
+        self.salary_avg = self.get_avg_salary()
 
         if self.conn is None:
             raise ValueError("Соединение с БД не установлено")
@@ -161,11 +171,11 @@ class DBManager(DBClass):
             data = [word for word in list_words if word and str(word).strip()]
         else:
             # Неподдерживаемый тип
-            return ""
+            return []
 
         # 2. Если слов нет — возвращаем пустую строку
         if not data:
-            return ""
+            return []
 
         # 3. Формируем условие WHERE
         select_words = " WHERE "
