@@ -13,6 +13,8 @@ URL_HH = "https://api.hh.ru/"
 filename_areas = os.path.join(DATA_DIR, "areas.json")
 filename_vacan = os.path.join(DATA_DIR, "vacancies.json")
 
+area_hh = 104  # Челябинск
+
 
 def config(filename="database.ini", section="postgresql"):
     # create a parser

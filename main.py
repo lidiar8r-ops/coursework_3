@@ -28,8 +28,8 @@ def main():
     params = config()
 
     # data = get_hh_data(employer_ids)
-    # # print(data)
-    create_database('hh_ru', params)
+    # print(data)
+    # create_database('hh_ru', params)
     # save_data_to_database(data, 'hh_ru', params)
     # print('запись в базу окончена')
 

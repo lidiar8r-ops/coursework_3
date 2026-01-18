@@ -3,6 +3,7 @@ import psycopg2
 import requests
 
 from src import app_logger
+from src.config import area_hh
 
 # Настройка логирования
 logger = app_logger.get_logger("utils.log")
@@ -37,7 +38,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
             params = {
                 "employer_id": employer_id,
                 "per_page": 100,  # Макс. 100 на страницу
-                "area":  104,
+                "area":  area_hh,
                 "page": 0
             }
 
@@ -49,7 +50,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 response = requests.get(url, params=params)  # , params=params
                 if response.status_code == 200:
                     vacansies_data = response.json()
-                    print(url,params)
+                    # print(url,params)
                     # print(vacansies_data)
 
                 if not vacansies_data["items"]:

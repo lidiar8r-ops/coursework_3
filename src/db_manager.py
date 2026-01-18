@@ -74,11 +74,12 @@ class DBManager(DBClass):
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
         """— получает список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
         self.salary_avg = self.get_avg_salary()[0]
+
         # print(self.salary_avg)
         with self.conn.cursor() as cur:
             cur.execute(f"select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
-                        f" from employers "
-                        f" left join vacansies Using(employer_id) "
+                        f" from vacansies "
+                        f" left join employers Using(employer_id) "
                         f" where salary_avg > {self.salary_avg}")
             data_employers = cur.fetchall()
         return data_employers
@@ -88,6 +89,7 @@ class DBManager(DBClass):
         """— получает список всех вакансий, в названии которых содержатся переданные в метод слова, например python."""
         data = []
         with self.conn.cursor() as cur:
-            cur.execute(f"select vacansy_name  from  vacansies where vacansy_name like in {list_words}")
-            data = cur.fetchall()[0]
-            return data
+            cur.execute(f"select vacansy_name  from  vacansies where vacansy_name like in ({list_words})")
+            data = cur.fetchall()
+
+        return data
