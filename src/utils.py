@@ -1,4 +1,5 @@
 from typing import Any
+
 import psycopg2
 import requests
 
@@ -8,8 +9,9 @@ from src.config import area_hh
 # Настройка логирования
 logger = app_logger.get_logger("utils.log")
 
+
 def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
-    """Получение данных о компаниях и вакансиях с помощью API """
+    """Получение данных о компаниях и вакансиях с помощью API"""
 
     data = []
     for employer_id in employer_ids:
@@ -34,13 +36,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
             #     # if not isinstance(vacansies_data, dict):
             #     #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
 
-
-            params = {
-                "employer_id": employer_id,
-                "per_page": 100,  # Макс. 100 на страницу
-                "area":  area_hh,
-                "page": 0
-            }
+            params = {"employer_id": employer_id, "per_page": 100, "area": area_hh, "page": 0}  # Макс. 100 на страницу
 
             all_vacancies = []
             while True:
@@ -59,18 +55,12 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 all_vacancies.extend(vacansies_data["items"])
                 params["page"] += 1
 
-
                 # Ограничение API: не более 2000 вакансий
                 if params["page"] > 19:
                     break
 
-
             # print(all_vacancies)
-            data.append({
-                'employer': employer_data, #['items'][0],
-                'vacansies': all_vacancies  #['items']
-            })
-
+            data.append({"employer": employer_data, "vacansies": all_vacancies})  # ['items'][0],  # ['items']
 
         except Exception as e:
             logger.error(e)
@@ -80,22 +70,24 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
 def create_database(database_name: str, params: dict):
     """Создание базы данных и таблиц для сохранения данных о компаниях и вакансиях."""
 
-    conn = psycopg2.connect(dbname='postgres', **params)
+    conn = psycopg2.connect(dbname="postgres", **params)
     conn.autocommit = True
     cur = conn.cursor()
 
     try:
-        cur.execute(f'DROP DATABASE IF EXISTS {database_name}')
-        cur.execute(f'CREATE DATABASE {database_name}')
+        cur.execute(f"DROP DATABASE IF EXISTS {database_name}")
+        cur.execute(f"CREATE DATABASE {database_name}")
     except psycopg2.errors.ObjectInUse:
-        cur.execute(f"""
+        cur.execute(
+            f"""
         SELECT pg_terminate_backend(pid)
         FROM pg_stat_activity WHERE datname = '{database_name}' AND pid <> pg_backend_pid();
-        """)
-        cur.execute(f'DROP DATABASE {database_name}')
-        cur.execute(f'CREATE DATABASE {database_name}')
+        """
+        )
+        cur.execute(f"DROP DATABASE {database_name}")
+        cur.execute(f"CREATE DATABASE {database_name}")
     except psycopg2.errors.InvalidCatalogName:
-        cur.execute(f'CREATE DATABASE {database_name}')
+        cur.execute(f"CREATE DATABASE {database_name}")
 
     # cur.close()
     conn.close()
@@ -104,7 +96,8 @@ def create_database(database_name: str, params: dict):
     conn.autocommit = True
 
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE employers  (
                 employer_id SERIAL PRIMARY KEY,
                 employer_name VARCHAR(255),
@@ -113,10 +106,12 @@ def create_database(database_name: str, params: dict):
                 description text,
                 area_name Varchar(255)                                
             )
-        """)
+        """
+        )
 
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(
+            """
             CREATE TABLE vacansies (
                 vacansy_id SERIAL PRIMARY KEY,
                 employer_id INT REFERENCES employers (employer_id),
@@ -128,7 +123,8 @@ def create_database(database_name: str, params: dict):
                 currency VARCHAR(5),           
                 published_at DATE                
             )
-        """)
+        """
+        )
 
     conn.commit()
     conn.close()
@@ -150,7 +146,7 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 return  # Прекращаем выполнение при ошибке
 
             for employer in data:
-                employer_data = employer['employer']
+                employer_data = employer["employer"]
 
                 # Вставка работодателя
                 cur.execute(
@@ -160,28 +156,28 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                     RETURNING employer_id
                     """,
                     (
-                        employer_data['name'],
-                        employer_data['site_url'],
-                        employer_data['vacancies_url'],
-                        employer_data['description'],
-                        employer_data['area']['name']
-                    )
+                        employer_data["name"],
+                        employer_data["site_url"],
+                        employer_data["vacancies_url"],
+                        employer_data["description"],
+                        employer_data["area"]["name"],
+                    ),
                 )
                 employer_id = cur.fetchone()[0]
 
                 # Обработка вакансий
-                vacancies_data = employer['vacansies']
+                vacancies_data = employer["vacansies"]
                 for vacancy_data in vacancies_data:
                     # 1. Обработка зарплаты
-                    salary = vacancy_data.get('salary')
+                    salary = vacancy_data.get("salary")
                     salary_from = 0
                     salary_to = 0
-                    currency = 'RUR'
+                    currency = "RUR"
 
                     if isinstance(salary, dict):
-                        salary_from = salary.get('from')
-                        salary_to = salary.get('to')
-                        currency = salary.get('currency', 'RUR')
+                        salary_from = salary.get("from")
+                        salary_to = salary.get("to")
+                        currency = salary.get("currency", "RUR")
 
                         # Преобразование в float с обработкой ошибок
                         try:
@@ -205,9 +201,9 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                         salary_avg = 0
 
                     # 2. Обработка даты публикации
-                    published_at = vacancy_data.get('published_at')
+                    published_at = vacancy_data.get("published_at")
                     if isinstance(published_at, dict):
-                        published_at = published_at.get('$date')
+                        published_at = published_at.get("$date")
                     elif not isinstance(published_at, str):
                         published_at = None
 
@@ -221,14 +217,14 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                         """,
                         (
                             employer_id,
-                            vacancy_data['name'],
-                            vacancy_data['url'],
+                            vacancy_data["name"],
+                            vacancy_data["url"],
                             salary_from,
                             salary_to,
                             salary_avg,
                             currency,
-                            published_at
-                        )
+                            published_at,
+                        ),
                     )
 
         # Успешное завершение — коммит транзакции
@@ -240,5 +236,3 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
         conn.rollback()  # Откат при любой ошибке
     finally:
         conn.close()
-
-
