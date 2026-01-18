@@ -74,7 +74,7 @@ class DBManager(DBClass):
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                select employer_name, count_vac  from employers 
+                select employer_name, count_vac  from employers
                 left join (SELECT COUNT(vacansy_id) AS count_vac, employer_id
                     FROM vacansies
                     GROUP BY employer_id
@@ -85,15 +85,16 @@ class DBManager(DBClass):
         return data_employers
 
     def get_all_vacancies(self) -> list[dict[str, Any]]:
-        """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию."""
+        """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и
+        сылки на вакансию."""
         data_employers = []
 
         with self.conn.cursor() as cur:
             cur.execute(
                 """
-                select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url  
-                from employers 
-                left join vacansies Using(employer_id)  
+                select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url
+                from employers
+                left join vacansies Using(employer_id)
             """
             )
             data_employers = cur.fetchall()

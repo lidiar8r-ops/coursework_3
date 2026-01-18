@@ -1,5 +1,3 @@
-import os
-
 from src import app_logger
 from src.config import config
 from src.db_manager import DBManager

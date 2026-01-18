@@ -27,21 +27,11 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                     break
             vacansies_data = []
 
-            # print(employer_data)
-            # https://api.hh.ru/employers/{employer_id}/vacancies/active
-            # "vacancies_url": "https://api.hh.ru/vacancies?employer_id=32575"
-            # response_vacancy = requests.get(f"{employer_data['vacancies_url']}&)
-            # if response_vacancy.status_code == 200:
-            #     vacansies_data = response_vacancy.json()
-            #     # if not isinstance(vacansies_data, dict):
-            #     #     logger.info(f"Отсутствуют вакансии у работадателя {employer_data['name']} с id = {employer_id}")
-
             params = {"employer_id": employer_id, "per_page": 100, "area": area_hh, "page": 0}  # Макс. 100 на страницу
 
             all_vacancies = []
             while True:
-                # url = f"https://api.hh.ru/vacancies?per_page=100&employer_id={employer_id}&page={params['page']}"
-                url = f"https://api.hh.ru/vacancies"
+                url = "https://api.hh.ru/vacancies"
 
                 response = requests.get(url, params=params)  # , params=params
                 if response.status_code == 200:
@@ -104,7 +94,7 @@ def create_database(database_name: str, params: dict):
                 site_url TEXT,
                 vacancies_url TEXT,
                 description text,
-                area_name Varchar(255)                                
+                area_name Varchar(255)
             )
         """
         )
@@ -116,12 +106,12 @@ def create_database(database_name: str, params: dict):
                 vacansy_id SERIAL PRIMARY KEY,
                 employer_id INT REFERENCES employers (employer_id),
                 vacansy_name VARCHAR(255) NOT NULL,
-                url TEXT, 
+                url TEXT,
                 salary_from VARCHAR(30),
                 salary_to VARCHAR(30),
                 salary_avg REAL,
-                currency VARCHAR(5),           
-                published_at DATE                
+                currency VARCHAR(5),
+                published_at DATE
             )
         """
         )
@@ -211,8 +201,7 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                     cur.execute(
                         """
                         INSERT INTO vacansies (
-                            employer_id, vacansy_name, url, salary_from, 
-                            salary_to, salary_avg, currency, published_at
+                            employer_id, vacansy_name, url, salary_from, salary_to, salary_avg, currency, published_at
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
