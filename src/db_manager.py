@@ -44,7 +44,7 @@ class DBManager(DBClass):
 
 
     def get_all_vacancies(self) -> list[dict[str, Any]]:
-        """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию."""
+        """ список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию."""
         data_employers = []
 
         with self.conn.cursor() as cur:
@@ -72,7 +72,7 @@ class DBManager(DBClass):
 
 
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
-        """— получает список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
+        """ Список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
         self.salary_avg = self.get_avg_salary()[0]
 
         # print(self.salary_avg)
