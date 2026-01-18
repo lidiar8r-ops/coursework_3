@@ -15,7 +15,7 @@ def main():
     print("Добро пожаловать в систему поиска вакансий!")
     print("=" * 50)
     logger.info("=" * 50)
-    sign_create_db = 0  # Флаг: создана ли БД
+    # sign_create_db = 0  # Флаг: создана ли БД
 
 
     while True:
@@ -28,7 +28,7 @@ def main():
         print("6. Список вакансий по ключевым словам")
         print("7. Выход")
 
-        choice = input("\nВведите номер действия (1–8): ").strip()
+        choice = input("\nВведите номер действия (1–7): ").strip()
 
         params = config()
 
@@ -54,7 +54,7 @@ def main():
 
         elif choice == "2" or choice == "3" or choice == "4" or choice == "5" or choice == "6":
             try:
-                db_manager = DBManager('hh_ru1', params)
+                db_manager = DBManager('hh_ru', params)
 
                 if choice == "2":
                     print("\n", "=" * 30)
@@ -85,7 +85,14 @@ def main():
                 elif choice == "6":
                     print("\n", "=" * 30)
                     print("Вакансии по ключевым словам (например, 'программист', 'python', 'курьер'):")
-                    rows = db_manager.get_vacancies_with_keyword(['программист', 'python', 'курьер'])
+                    # query = input("Введите поисковый запрос: ").strip()
+                    # if not query:
+                    #     print("Запрос не может быть пустым!")
+                    #     continue
+
+                    excluded_text = input("Введите слова для запроса (через запятую): ").strip()
+
+                    rows = db_manager.get_vacancies_with_keyword(excluded_text)
                     db_manager.print_vacancies(rows)
 
                 db_manager.close_conn()  # Закрываем соединение после всех операций
