@@ -37,8 +37,10 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
             params = {
                 "employer_id": employer_id,
                 "per_page": 100,  # Макс. 100 на страницу
+                "area":  104,
                 "page": 0
             }
+
             all_vacancies = []
             while True:
                 # url = f"https://api.hh.ru/vacancies?per_page=100&employer_id={employer_id}&page={params['page']}"
@@ -58,7 +60,7 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
 
 
                 # Ограничение API: не более 2000 вакансий
-                if len(all_vacancies) >= 500:
+                if params["page"] > 19:
                     break
 
 
@@ -136,37 +138,62 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
 
     conn = psycopg2.connect(dbname=database_name, **params)
 
-    with conn.cursor() as cur:
-        for employer in data:
-            employer_data = employer['employer']
-            cur.execute(
-                """
-                INSERT INTO employers (employer_name, site_url, vacancies_url, description, area_name)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING employer_id
-                """,
-                (employer_data['name'], employer_data['site_url'], employer_data['vacancies_url'],
-                employer_data['description'],  employer_data['area']['name'])
-            )
-            employer_id = cur.fetchone()[0]
-            vacansies_data = employer['vacansies']
-            for vacancy_data in vacansies_data:
-                # 1. Извлекаем данные из salary
-                salary = vacancy_data.get('salary')
-                if isinstance(salary, dict):
-                    # salary_from = salary.get('from', 0)
-                    # salary_to = salary.get('to', 0)
-                    currency = salary.get('currency', ' ')
-                    # Пытаемся преобразовать, если не число — пропускаем
-                    try:
-                        salary_from = float(salary_from) if salary_from is not None else 0
-                    except (TypeError, ValueError):
-                        salary_from = 0
-                    try:
-                        salary_to = float(salary_to) if salary_to is not None else 0
-                    except (TypeError, ValueError):
-                        salary_to = 0
+    try:
+        with conn.cursor() as cur:
+            # Проверка существования таблицы (опционально)
+            try:
+                cur.execute("SELECT 1 FROM employers LIMIT 1")
+            except Exception as e:
+                print(f"Ошибка проверки таблицы employers: {e}")
+                conn.rollback()
+                return  # Прекращаем выполнение при ошибке
 
+            for employer in data:
+                employer_data = employer['employer']
+
+                # Вставка работодателя
+                cur.execute(
+                    """
+                    INSERT INTO employers (employer_name, site_url, vacancies_url, description, area_name)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING employer_id
+                    """,
+                    (
+                        employer_data['name'],
+                        employer_data['site_url'],
+                        employer_data['vacancies_url'],
+                        employer_data['description'],
+                        employer_data['area']['name']
+                    )
+                )
+                employer_id = cur.fetchone()[0]
+
+                # Обработка вакансий
+                vacancies_data = employer['vacansies']
+                for vacancy_data in vacancies_data:
+                    # 1. Обработка зарплаты
+                    salary = vacancy_data.get('salary')
+                    salary_from = 0
+                    salary_to = 0
+                    currency = 'RUR'
+
+                    if isinstance(salary, dict):
+                        salary_from = salary.get('from')
+                        salary_to = salary.get('to')
+                        currency = salary.get('currency', 'RUR')
+
+                        # Преобразование в float с обработкой ошибок
+                        try:
+                            salary_from = float(salary_from) if salary_from is not None else 0
+                        except (TypeError, ValueError):
+                            salary_from = 0
+
+                        try:
+                            salary_to = float(salary_to) if salary_to is not None else 0
+                        except (TypeError, ValueError):
+                            salary_to = 0
+
+                    # Расчёт средней зарплаты
                     if salary_from > 0 and salary_to > 0:
                         salary_avg = (salary_from + salary_to) / 2
                     elif salary_from > 0:
@@ -176,35 +203,41 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                     else:
                         salary_avg = 0
 
-                else:
-                    salary_from = 0
-                    salary_to = 0
-                    salary_avg = 0
-                    currency = 'RUR'
+                    # 2. Обработка даты публикации
+                    published_at = vacancy_data.get('published_at')
+                    if isinstance(published_at, dict):
+                        published_at = published_at.get('$date')
+                    elif not isinstance(published_at, str):
+                        published_at = None
 
-                # 2. Обрабатываем published_at (может быть dict или str)
-                published_at = vacancy_data.get('published_at')
-                if isinstance(published_at, dict):
-                    published_at = published_at.get('$date')  # если есть ключ $date
-                elif not isinstance(published_at, str):
-                    published_at = None  # если не строка и не dict — ставим None
-
-                with conn.cursor() as cur:
+                    # Вставка вакансии
                     cur.execute(
                         """
-                        INSERT INTO vacansies (employer_id, vacansy_name, url, salary_from, salary_to, salary_avg, currency, 
-                        published_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO vacansies (
+                            employer_id, vacansy_name, url, salary_from, 
+                            salary_to, salary_avg, currency, published_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
-                        (employer_id,
-                        vacancy_data['name'],
-                        vacancy_data['url'],
-                        salary_from,
-                        salary_to,
-                        salary_avg,
-                        currency,
-                        published_at)
+                        (
+                            employer_id,
+                            vacancy_data['name'],
+                            vacancy_data['url'],
+                            salary_from,
+                            salary_to,
+                            salary_avg,
+                            currency,
+                            published_at
+                        )
                     )
 
+        # Успешное завершение — коммит транзакции
+        conn.commit()
+        print("Данные успешно сохранены в БД.")
 
-    conn.commit()
-    conn.close()
+    except Exception as e:
+        print(f"Критическая ошибка: {e}")
+        conn.rollback()  # Откат при любой ошибке
+    finally:
+        conn.close()
+
+

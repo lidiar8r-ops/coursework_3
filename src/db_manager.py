@@ -20,7 +20,7 @@ class DBClass(ABC):
 class DBManager(DBClass):
     def __init__(self, db_name, params):
         super().__init__(db_name, params)
-
+        self.salary_avg = 0
 
     def close_conn(self):
         super().close_conn()
@@ -49,7 +49,8 @@ class DBManager(DBClass):
 
         with self.conn.cursor() as cur:
             cur.execute("""
-                select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url  from employers 
+                select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url  
+                from employers 
                 left join vacansies Using(employer_id)  
             """)
             data_employers = cur.fetchall()
@@ -58,25 +59,28 @@ class DBManager(DBClass):
 
     def get_avg_salary(self) -> int:
         """ получает среднюю зарплату по вакансиям."""
-        salary_avg = 0
+        self.salary_avg = 0
         with self.conn.cursor() as cur:
             cur.execute("""
                        SELECT
-                            round(AVG(salary_from::numeric),2) AS avg_salary_from,
-                            round(AVG(salary_to::numeric),2) AS avg_salary_to
+                            round(AVG(salary_avg::numeric),2) AS salary_avg
                         FROM vacansies;
                     """)
-            salary_avg = cur.fetchall()[0]
+            self.salary_avg = cur.fetchall()[0]
 
-        return salary_avg
+        return self.salary_avg
 
 
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
         """— получает список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
-        salary_avg = get_avg_salary()
+        self.salary_avg = self.get_avg_salary()[0]
+        # print(self.salary_avg)
         with self.conn.cursor() as cur:
-            cur.execute(f"select vacansy_name  from  vacansies where salary_from > {salary_avg}")
-            data_employers = cur.fetchall()[0]
+            cur.execute(f"select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
+                        f" from employers "
+                        f" left join vacansies Using(employer_id) "
+                        f" where salary_avg > {self.salary_avg}")
+            data_employers = cur.fetchall()
         return data_employers
 
 
