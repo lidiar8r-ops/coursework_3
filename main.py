@@ -30,6 +30,7 @@ def main():
 
         choice = input("\nВведите номер действия (1–8): ").strip()
 
+        params = config()
 
         if choice == "1":
             employer_ids = [
@@ -45,67 +46,50 @@ def main():
                 '1035394', # Красное & Белое, розничная сеть
                 '2180',    # ОЗОН
             ]
-            params = config()
 
             data = get_hh_data(employer_ids)
             create_database('hh_ru', params)
             save_data_to_database(data, 'hh_ru', params)
             print('Запись в базу завершена')
-            sign_create_db = 1
 
-            db_manager = DBManager('hh_ru', params)
-
-        elif choice == "2":
-            if not sign_create_db:
+        elif choice == "2" or choice == "3" or choice == "4" or choice == "5" or choice == "6":
+            db_manager = DBManager('hh_ru1', params)
+            if not db_manager:
                 print("Сперва создайте БД, выбрав пункт 1")
-
-            print("\n", "=" * 30)
-            print("Список всех компаний с количеством вакансий:")
-            rows = db_manager.get_companies_and_vacancies_count()
-            for i, row in enumerate(rows, 1):
-                print(f"{i}. '{row[0]}' — {row[1]} вакансий")
-
-
-        elif choice == "3":
-            if not sign_create_db:
-               print("Сперва создайте БД, выбрав пункт 1")
-
-            print("\n", "=" * 30)
-            print("Список всех вакансий (компания, название, зарплата, ссылка):")
-            rows = db_manager.get_all_vacancies()
-            for i, row in enumerate(rows, 1):
-                print(f"{i}. '{row[0]}' — вакансия: {row[1]}, зарплата: {row[2]}, ссылка: {row[3]}")
-
-        elif choice == "4":
-            if not sign_create_db:
-                print("Сперва создайте БД, выбрав пункт 1")
-
-            print("\n", "=" * 30)
-            print("Средняя зарплата по вакансиям:")
-            avg_salary = db_manager.get_avg_salary()
-            print(f"Средняя зарплата: {avg_salary[0] if avg_salary else 'Нет данных'}")
-
-        elif choice == "5":
-            if not sign_create_db:
-                print("Сперва создайте БД, выбрав пункт 1")
-
-            print("\n", "=" * 30)
-            print("Вакансии с зарплатой выше средней:")
-            rows = db_manager.get_vacancies_with_higher_salary()
-            for i, row in enumerate(rows, 1):
-                print(f"{i}. '{row[0]}' — вакансия: {row[1]}, зарплата: {row[2]}, ссылка: {row[3]}")
-
-        elif choice == "6":
-            if not sign_create_db:
-                print("Сперва создайте БД, выбрав пункт 1")
-            print("\n", "=" * 30)
-            print("Вакансии по ключевым словам (например, 'программист', 'python', 'курьер'):")
-            rows = db_manager.get_vacancies_with_keyword(['программист', 'python', 'курьер'])
-            for i, row in enumerate(rows, 1):
-                print(f"{i}. '{row[0]}' —вакансия: {row[1]}, зарплата: {row[2]}, ссылка: {row[3]}")
+            else:
+                if choice == "2":
+                    print("\n", "=" * 30)
+                    print("Список всех компаний с количеством вакансий:")
+                    rows = db_manager.get_companies_and_vacancies_count()
+                    for i, row in enumerate(rows, 1):
+                        print(f"{i}. '{row[0]}' — {row[1]} вакансий")
 
 
+                elif choice == "3":
+                    print("\n", "=" * 30)
+                    print("Список всех вакансий (компания, название, зарплата, ссылка):")
+                    rows = db_manager.get_all_vacancies()
+                    db_manager.print_vacancies(rows)
 
+                elif choice == "4":
+                    print("\n", "=" * 30)
+                    print("Средняя зарплата по вакансиям:")
+                    avg_salary = db_manager.get_avg_salary()
+                    print(f"Средняя зарплата: {avg_salary[0] if avg_salary else 'Нет данных'}")
+
+                elif choice == "5":
+                    print("\n", "=" * 30)
+                    print("Вакансии с зарплатой выше средней:")
+                    rows = db_manager.get_vacancies_with_higher_salary()
+                    db_manager.print_vacancies(rows)
+
+                elif choice == "6":
+                    print("\n", "=" * 30)
+                    print("Вакансии по ключевым словам (например, 'программист', 'python', 'курьер'):")
+                    rows = db_manager.get_vacancies_with_keyword(['программист', 'python', 'курьер'])
+                    db_manager.print_vacancies(rows)
+
+            db_manager.close_conn()  # Закрываем соединение после всех операций
 
         elif choice == "7":
             db_manager.close_conn()  # Закрываем соединение после всех операций

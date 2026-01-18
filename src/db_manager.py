@@ -4,13 +4,15 @@ from abc import ABC
 
 from typing import Any
 
+from src import app_logger
+
+# Настройка логирования
+logger = app_logger.get_logger("utils.log")
 
 class DBClass(ABC):
     def __init__(self, db_name, params):
         self.db_name = db_name
         self.params = params
-        self.conn = psycopg2.connect(dbname=db_name, **params)
-        self.conn.autocommit = True
 
 
     def close_conn(self):
@@ -22,8 +24,58 @@ class DBManager(DBClass):
         super().__init__(db_name, params)
         self.salary_avg = 0
 
+        # Проверяем существование БД перед подключением
+        if not self._database_exists(db_name, params):
+            # raise ValueError(f"БД '{db_name}' не существует или недоступна!")
+            logger.error(f"БД '{db_name}' не существует или недоступна!")
+            print(f"БД '{db_name}' не существует или недоступна!")
+            return None
+
+
+    def _database_exists(self, db_name, params):
+        """Проверяет, существует ли БД в кластере PostgreSQL."""
+        try:
+            # Подключаемся к БД
+            self.conn = psycopg2.connect(dbname=db_name, **params)
+            self.conn.autocommit = True
+            cur = self.conn.cursor()
+
+            cur.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s;",
+                (db_name,)
+            )
+            exists = cur.fetchone() is not None
+
+            cur.close()
+            # conn.close()
+            return exists
+
+        except Exception as e:
+            print(f"Ошибка при проверке существования БД: {e}")
+            return False
+
+    def _create_connection(self, db_name, params):
+        """Создаёт соединение с указанной БД."""
+
+
     def close_conn(self):
         super().close_conn()
+
+
+    @staticmethod
+    def print_vacancies(vacancies: list[dict]) -> None:
+        """
+        Выводит информацию о вакансиях в удобной форме.
+        Args:
+            vacancies : Список вакансий для вывода.
+        """
+
+        logger.info("Вывод в консоль информации о вакансиях")
+
+        for i, row in enumerate(vacancies, 1):
+            print(f"{i}. '{row[0]}' — вакансия: {row[1]}, зарплата: {row[2]}, ссылка: {row[3]}")
+
+        print("-" * 50)
 
 
     def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
@@ -39,12 +91,11 @@ class DBManager(DBClass):
                     ) as  vacansies Using(employer_id);
             """)
             data_employers = cur.fetchall()
-            # cur.close()
         return data_employers
 
 
     def get_all_vacancies(self) -> list[dict[str, Any]]:
-        """ список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию."""
+        """ получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и ссылки на вакансию."""
         data_employers = []
 
         with self.conn.cursor() as cur:
@@ -72,10 +123,9 @@ class DBManager(DBClass):
 
 
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
-        """ Список всех вакансий, у которых зарплата выше средней по всем вакансиям."""
+        """ получает cписок всех вакансий, у которых зарплата выше средней по всем вакансиям."""
         self.salary_avg = self.get_avg_salary()[0]
 
-        # print(self.salary_avg)
         with self.conn.cursor() as cur:
             cur.execute(f"select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
                         f" from vacansies "
@@ -86,7 +136,7 @@ class DBManager(DBClass):
 
 
     def get_vacancies_with_keyword(self, list_words: list) -> list[dict[str, Any]]:
-        """ список всех вакансий, в названии которых содержатся переданные в метод слова, например python."""
+        """ получает список всех вакансий, в названии которых содержатся переданные в метод слова, например python."""
         data = []
         select_words = ""
         if len(list_words):
@@ -100,7 +150,6 @@ class DBManager(DBClass):
         select_words = (f"SELECT employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
                         f" FROM vacansies "
                         f" LEFT JOIN employers Using(employer_id)  {select_words}")
-        # print(select_words)
 
         with self.conn.cursor() as cur:
             cur.execute(select_words)
