@@ -59,7 +59,7 @@ class DBManager(DBClass):
         super().close_conn()
 
     @staticmethod
-    def print_vacancies(vacancies: list[dict]) -> None:
+    def print_vacancies(vacancies: list[tuple[str, int | None, str | None, str]]) -> None:
         """
         Выводит информацию о вакансиях в удобной форме.
         Args:
@@ -73,7 +73,7 @@ class DBManager(DBClass):
 
         print("-" * 50)
 
-    def get_companies_and_vacancies_count(self) -> tuple[str, int | None]:
+    def get_companies_and_vacancies_count(self) -> list[tuple[str, int | None, str | None, str]]:
         """получает список всех компаний и количество вакансий у каждой компании."""
         data_employers: List[Dict[str, Any]] = []
 
@@ -95,7 +95,7 @@ class DBManager(DBClass):
         logger.info("Вывод в консоль списка всех компаний и количество вакансий у каждой компании.")
         return data_employers
 
-    def get_all_vacancies(self) -> tuple[str, int | None]:
+    def get_all_vacancies(self) -> list[tuple[str, int | None, str | None, str]]:
         """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и
         ссылки на вакансию."""
         data_employers: List[Dict[str, Any]] = []
@@ -143,7 +143,7 @@ class DBManager(DBClass):
         logger.info("Вывод в консоль среднюю зарплату по вакансиям")
         return self.salary_avg
 
-    def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
+    def get_vacancies_with_higher_salary(self) -> list[tuple[str, int | None, str | None, str]]:
         """получает cписок всех вакансий, у которых зарплата выше средней по всем вакансиям."""
         self.salary_avg = self.get_avg_salary()
 
@@ -162,7 +162,7 @@ class DBManager(DBClass):
         logger.info("Вывод в консоль списка всех вакансий, у которых зарплата выше средней по всем вакансиям")
         return data_employers
 
-    def get_vacancies_with_keyword(self, list_words: list) -> list[dict[str, Any]]:
+    def get_vacancies_with_keyword(self, list_words: str) -> list[tuple[str, int | None, str | None, str]]:
         """получает список всех вакансий, в названии которых содержатся переданные в метод слова, например python.
         Формирует SQL-условие WHERE для поиска по ключевым словам.
         Поддерживает:
