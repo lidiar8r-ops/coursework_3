@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict, List, Union
 
 import psycopg2
 import requests
@@ -10,50 +10,90 @@ from src.config import area_hh
 logger = app_logger.get_logger("utils.log")
 
 
-def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
-    """Получение данных о компаниях и вакансиях с помощью API"""
+def get_hh_data(employer_ids: List[str]) -> List[Dict[str, Any]]:
+    """
+    Получение данных о компаниях и вакансиях с помощью API hh.ru.
 
-    data = []
+    Args:
+        employer_ids: Список ID работодателей.
+
+    Returns:
+        Список словарей с данными о работодателях и их вакансиях.
+    """
+    timeout = 10
+    max_pages = 20  # 20 * 100 = 2000 вакансий максимум
+
+    data: List[Dict[str, Any]] = []
+
     for employer_id in employer_ids:
-        url = f"https://api.hh.ru/employers/{employer_id}"
-
         try:
-            response = requests.get(url)
+            # Получаем данные о работодателе
+            employer_url = f"https://api.hh.ru/employers/{employer_id}"
+            response = requests.get(employer_url, timeout=timeout)
 
-            if response.status_code == 200:
-                employer_data = response.json()
-                if not isinstance(employer_data, dict):
-                    logger.error("Ответ API не является словарём")
+            if response.status_code == 404:
+                logger.warning(f"Работодатель {employer_id} не найден")
+                continue
+            elif response.status_code != 200:
+                logger.error(
+                    f"Ошибка API при запросе работодателя {employer_id}: "
+                    f"статус {response.status_code}, ответ {response.text}"
+                )
+                continue
+
+            employer_data = response.json()
+            if not isinstance(employer_data, dict):
+                logger.error(f"Ответ API для {employer_id} не является словарём")
+                continue
+
+            # Получаем вакансии работодателя
+            all_vacancies: List[Dict[str, Any]] = []
+            page = 0
+
+            while page < max_pages:
+                vacancies_url = "https://api.hh.ru/vacancies"
+
+                params: Dict[str, Union[str, int, None]] = {
+                    "employer_id": employer_id,
+                    "per_page": 100,
+                    "area": str(area_hh),  # Приводим к str, если area_hh — число
+                    "page": page,
+                }
+
+                response = requests.get(vacancies_url, params=params, timeout=timeout)
+
+                if response.status_code == 429:
+                    logger.error("Превышен лимит запросов к API. Попробуйте позже.")
                     break
-            vacansies_data = []
-
-            params = {"employer_id": employer_id, "per_page": 100, "area": area_hh, "page": 0}  # Макс. 100 на страницу
-
-            all_vacancies = []
-            while True:
-                url = "https://api.hh.ru/vacancies"
-
-                response = requests.get(url, params=params)  # , params=params
-                if response.status_code == 200:
-                    vacansies_data = response.json()
-
-                if not vacansies_data["items"]:
+                elif response.status_code != 200:
+                    logger.error(
+                        f"Ошибка API при запросе вакансий {employer_id}, страница {page}: "
+                        f"статус {response.status_code}, ответ {response.text}"
+                    )
                     break
 
-                all_vacancies.extend(vacansies_data["items"])
-                params["page"] += 1
+                vacancies_data = response.json()
 
-                # Ограничение API: не более 2000 вакансий
-                if params["page"] > 19:
+                # Проверяем наличие 'items'
+                if "items" not in vacancies_data:
+                    logger.error(f"В ответе API для {employer_id} нет ключа 'items'")
                     break
 
-            data.append({"employer": employer_data, "vacansies": all_vacancies})  # ['items'][0],  # ['items']
+                items = vacancies_data["items"]
+                if not items:  # Нет больше вакансий
+                    break
 
+                all_vacancies.extend(items)
+                page += 1
+
+            data.append({"employer": employer_data, "vacancies": all_vacancies})
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ошибка сети при запросе {employer_id}: {e}")
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Неожиданная ошибка для {employer_id}: {e}")
 
-    logger.info("Получение данных о компаниях и вакансиях с помощью API окончено")
-
+    logger.info("Получение данных о компаниях и вакансиях завершено")
     return data
 
 
@@ -61,7 +101,7 @@ def create_database(database_name: str, params: dict) -> None:
     """Создание базы данных и таблиц для сохранения данных о компаниях и вакансиях."""
 
     conn = psycopg2.connect(dbname="postgres", **params)
-    if self.conn is None:
+    if conn is None:
         logger.error("Соединение с БД не установлено")
         raise ValueError("Соединение с БД не установлено")
 
@@ -89,7 +129,7 @@ def create_database(database_name: str, params: dict) -> None:
     conn = psycopg2.connect(dbname=database_name, **params)
     conn.autocommit = True
 
-    try
+    try:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -107,7 +147,7 @@ def create_database(database_name: str, params: dict) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                CREATE TABLE vacansies (
+                CREATE TABLE vacancies (
                     vacansy_id SERIAL PRIMARY KEY,
                     employer_id INT REFERENCES employers (employer_id),
                     vacansy_name VARCHAR(255) NOT NULL,
@@ -165,17 +205,17 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                 employer_id = cur.fetchone()[0]
 
                 # Обработка вакансий
-                vacancies_data = employer["vacansies"]
+                vacancies_data = employer["vacancies"]
                 for vacancy_data in vacancies_data:
                     # 1. Обработка зарплаты
                     salary = vacancy_data.get("salary")
-                    salary_from = 0
-                    salary_to = 0
+                    salary_from = 0.0
+                    salary_to = 0.0
                     currency = "RUR"
 
                     if isinstance(salary, dict):
-                        salary_from = salary.get("from")
-                        salary_to = salary.get("to")
+                        salary_from = salary.get("from", 0.0)
+                        salary_to = salary.get("to", 0.0)
                         currency = salary.get("currency", "RUR")
 
                         # Преобразование в float с обработкой ошибок
@@ -209,7 +249,7 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
                     # Вставка вакансии
                     cur.execute(
                         """
-                        INSERT INTO vacansies (
+                        INSERT INTO vacancies (
                             employer_id, vacansy_name, url, salary_from, salary_to, salary_avg, currency, published_at
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,

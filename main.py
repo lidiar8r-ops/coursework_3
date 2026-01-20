@@ -7,7 +7,7 @@ from src.utils import create_database, get_hh_data, save_data_to_database
 logger = app_logger.get_logger("main.log")
 
 
-def main():
+def main() -> None:
     logger.info("Начало работы программы")
     print("Добро пожаловать в систему работы с вакансиями!")
     print("=" * 50)
@@ -81,7 +81,7 @@ def main():
                     print("\n", "=" * 30)
                     print("Вакансии по ключевым словам (например, программист, python, курьер):")
                     excluded_text = input("Введите слова для запроса (через запятую): ").strip()
-                    print(excluded_text)
+                    # print(excluded_text)
                     rows = db_manager.get_vacancies_with_keyword(excluded_text)
                     db_manager.print_vacancies(rows)
 

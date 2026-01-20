@@ -58,7 +58,6 @@ class DBManager(DBClass):
     def close_conn(self) -> None:
         super().close_conn()
 
-
     @staticmethod
     def print_vacancies(vacancies: list[dict]) -> None:
         """
@@ -74,8 +73,7 @@ class DBManager(DBClass):
 
         print("-" * 50)
 
-
-    def get_companies_and_vacancies_count(self) -> list[dict[str, Any]]:
+    def get_companies_and_vacancies_count(self) -> tuple[str, int | None]:
         """получает список всех компаний и количество вакансий у каждой компании."""
         data_employers: List[Dict[str, Any]] = []
 
@@ -88,21 +86,19 @@ class DBManager(DBClass):
                 """
                 select employer_name, count_vac  from employers
                 left join (SELECT COUNT(vacansy_id) AS count_vac, employer_id
-                    FROM vacansies
+                    FROM vacancies
                     GROUP BY employer_id
-                    ) as  vacansies Using(employer_id);
+                    ) as  vacancies Using(employer_id);
             """
             )
             data_employers = cur.fetchall()
         logger.info("Вывод в консоль списка всех компаний и количество вакансий у каждой компании.")
         return data_employers
 
-
-    def get_all_vacancies(self) -> list[dict[str, Any]]:
+    def get_all_vacancies(self) -> tuple[str, int | None]:
         """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и
         ссылки на вакансию."""
         data_employers: List[Dict[str, Any]] = []
-
 
         if self.conn is None:
             logger.error("Соединение с БД не установлено")
@@ -113,14 +109,15 @@ class DBManager(DBClass):
                 """
                 select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url
                 from employers
-                left join vacansies Using(employer_id)
+                left join vacancies Using(employer_id)
             """
             )
             data_employers = cur.fetchall()
-        logger.info("Вывод в консоль списка вакансий с указанием названия компании, названия вакансии и зарплаты и "
-            "ссылки на вакансию")
+        logger.info(
+            "Вывод в консоль списка вакансий с указанием названия компании, названия вакансии и зарплаты и "
+            "ссылки на вакансию"
+        )
         return data_employers
-
 
     def get_avg_salary(self) -> float:
         """получает среднюю зарплату по вакансиям."""
@@ -134,7 +131,7 @@ class DBManager(DBClass):
                 """
                        SELECT
                             round(AVG(salary_avg::numeric),2) AS salary_avg
-                        FROM vacansies;
+                        FROM vacancies;
                     """
             )
             result = cur.fetchone()
@@ -145,7 +142,6 @@ class DBManager(DBClass):
                 self.salary_avg = 0.0
         logger.info("Вывод в консоль среднюю зарплату по вакансиям")
         return self.salary_avg
-
 
     def get_vacancies_with_higher_salary(self) -> list[dict[str, Any]]:
         """получает cписок всех вакансий, у которых зарплата выше средней по всем вакансиям."""
@@ -158,7 +154,7 @@ class DBManager(DBClass):
         with self.conn.cursor() as cur:
             cur.execute(
                 f"select employer_name, vacansy_name,  salary_from||' - '||salary_to||' '||currency salary, url "
-                f" from vacansies "
+                f" from vacancies "
                 f" left join employers Using(employer_id) "
                 f" where salary_avg > {self.salary_avg}"
             )
@@ -203,10 +199,10 @@ class DBManager(DBClass):
 
         select_words = (
             f"SELECT employer_name, vacansy_name ,  salary_from||' - '||salary_to||' '||currency salary, url "
-            f" FROM vacansies "
+            f" FROM vacancies "
             f" LEFT JOIN employers Using(employer_id)  {select_words}"
         )
-        print(select_words)
+        # print(select_words)
 
         if self.conn is None:
             logger.error("Соединение с БД не установлено")
