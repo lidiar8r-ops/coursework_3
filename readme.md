@@ -29,7 +29,7 @@
 ## Установка:
 
 1 Клонируйте репозиторий:
-``` git clone git@github.com:lidiar8r-ops/coursework_2.git  ```
+``` git clone git@github.com:lidiar8r-ops/coursework_3.git  ```
 
 2 Перейдите в папку проекта:
 ``` cd ваш_репозиторий```
@@ -59,7 +59,7 @@
     password=пароль для подключения к БД
     port=5432
 
-6 Запуск
+5 Запуск
 
 Выполните скрипт:
 ```python main.py```
