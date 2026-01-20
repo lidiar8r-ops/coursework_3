@@ -36,8 +36,6 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 response = requests.get(url, params=params)  # , params=params
                 if response.status_code == 200:
                     vacansies_data = response.json()
-                    # print(url,params)
-                    # print(vacansies_data)
 
                 if not vacansies_data["items"]:
                     break
@@ -49,18 +47,24 @@ def get_hh_data(employer_ids: list[str]) -> list[dict[str, Any]]:
                 if params["page"] > 19:
                     break
 
-            # print(all_vacancies)
             data.append({"employer": employer_data, "vacansies": all_vacancies})  # ['items'][0],  # ['items']
 
         except Exception as e:
             logger.error(e)
+
+    logger.info("Получение данных о компаниях и вакансиях с помощью API окончено")
+
     return data
 
 
-def create_database(database_name: str, params: dict):
+def create_database(database_name: str, params: dict) -> None:
     """Создание базы данных и таблиц для сохранения данных о компаниях и вакансиях."""
 
     conn = psycopg2.connect(dbname="postgres", **params)
+    if self.conn is None:
+        logger.error("Соединение с БД не установлено")
+        raise ValueError("Соединение с БД не установлено")
+
     conn.autocommit = True
     cur = conn.cursor()
 
@@ -79,58 +83,63 @@ def create_database(database_name: str, params: dict):
     except psycopg2.errors.InvalidCatalogName:
         cur.execute(f"CREATE DATABASE {database_name}")
 
-    # cur.close()
+    cur.close()
     conn.close()
 
     conn = psycopg2.connect(dbname=database_name, **params)
     conn.autocommit = True
 
-    with conn.cursor() as cur:
-        cur.execute(
+    try
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE employers  (
+                    employer_id SERIAL PRIMARY KEY,
+                    employer_name VARCHAR(255),
+                    site_url TEXT,
+                    vacancies_url TEXT,
+                    description text,
+                    area_name Varchar(255)
+                )
             """
-            CREATE TABLE employers  (
-                employer_id SERIAL PRIMARY KEY,
-                employer_name VARCHAR(255),
-                site_url TEXT,
-                vacancies_url TEXT,
-                description text,
-                area_name Varchar(255)
             )
-        """
-        )
 
-    with conn.cursor() as cur:
-        cur.execute(
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE vacansies (
+                    vacansy_id SERIAL PRIMARY KEY,
+                    employer_id INT REFERENCES employers (employer_id),
+                    vacansy_name VARCHAR(255) NOT NULL,
+                    url TEXT,
+                    salary_from VARCHAR(30),
+                    salary_to VARCHAR(30),
+                    salary_avg REAL,
+                    currency VARCHAR(5),
+                    published_at DATE
+                )
             """
-            CREATE TABLE vacansies (
-                vacansy_id SERIAL PRIMARY KEY,
-                employer_id INT REFERENCES employers (employer_id),
-                vacansy_name VARCHAR(255) NOT NULL,
-                url TEXT,
-                salary_from VARCHAR(30),
-                salary_to VARCHAR(30),
-                salary_avg REAL,
-                currency VARCHAR(5),
-                published_at DATE
             )
-        """
-        )
+
+    except Exception as e:
+        print(e)
+        logger.error(e)
 
     conn.commit()
     conn.close()
+    logger.info("Успешное создание базы данных и таблиц для сохранения данных о компаниях и вакансиях")
 
 
-def save_data_to_database(data: list[dict[str, Any]], database_name: str, params: dict):
+def save_data_to_database(data: list[dict[str, Any]], database_name: str, params: dict) -> None:
     """Сохранение данных о компаниях и вакансиях в базу данных."""
-
     conn = psycopg2.connect(dbname=database_name, **params)
-
     try:
         with conn.cursor() as cur:
-            # Проверка существования таблицы (опционально)
+            # Проверка существования таблицы
             try:
                 cur.execute("SELECT 1 FROM employers LIMIT 1")
             except Exception as e:
+                logger.error(f"Ошибка проверки таблицы employers: {e}")
                 print(f"Ошибка проверки таблицы employers: {e}")
                 conn.rollback()
                 return  # Прекращаем выполнение при ошибке
@@ -219,9 +228,12 @@ def save_data_to_database(data: list[dict[str, Any]], database_name: str, params
         # Успешное завершение — коммит транзакции
         conn.commit()
         print("Данные успешно сохранены в БД.")
+        logger.info("Данные успешно сохранены в БД.")
 
     except Exception as e:
+        logger.error(f"Критическая ошибка: {e}")
         print(f"Критическая ошибка: {e}")
         conn.rollback()  # Откат при любой ошибке
     finally:
         conn.close()
+        logger.info("Окончание сохранения данных о компаниях и вакансиях в базу данных ")

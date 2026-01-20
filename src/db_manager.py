@@ -39,7 +39,7 @@ class DBManager(DBClass):
             self.conn = psycopg2.connect(dbname=db_name, **params)
             # Явная проверка, что conn не None
             if self.conn is None:
-                return False  # Или поднять исключение
+                return False
 
             self.conn.autocommit = True
             cur = self.conn.cursor()
@@ -80,6 +80,7 @@ class DBManager(DBClass):
         data_employers: List[Dict[str, Any]] = []
 
         if self.conn is None:
+            logger.error("Соединение с БД не установлено")
             raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
@@ -93,14 +94,18 @@ class DBManager(DBClass):
             """
             )
             data_employers = cur.fetchall()
+        logger.info("Вывод в консоль списка всех компаний и количество вакансий у каждой компании.")
         return data_employers
+
 
     def get_all_vacancies(self) -> list[dict[str, Any]]:
         """получает список всех вакансий с указанием названия компании, названия вакансии и зарплаты и
-        сылки на вакансию."""
+        ссылки на вакансию."""
         data_employers: List[Dict[str, Any]] = []
 
+
         if self.conn is None:
+            logger.error("Соединение с БД не установлено")
             raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
@@ -112,6 +117,8 @@ class DBManager(DBClass):
             """
             )
             data_employers = cur.fetchall()
+        logger.info("Вывод в консоль списка вакансий с указанием названия компании, названия вакансии и зарплаты и "
+            "ссылки на вакансию")
         return data_employers
 
 
@@ -119,6 +126,7 @@ class DBManager(DBClass):
         """получает среднюю зарплату по вакансиям."""
         self.salary_avg = 0
         if self.conn is None:
+            logger.error("Соединение с БД не установлено")
             raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
@@ -135,6 +143,7 @@ class DBManager(DBClass):
                 self.salary_avg = float(result[0])
             else:
                 self.salary_avg = 0.0
+        logger.info("Вывод в консоль среднюю зарплату по вакансиям")
         return self.salary_avg
 
 
@@ -143,6 +152,7 @@ class DBManager(DBClass):
         self.salary_avg = self.get_avg_salary()
 
         if self.conn is None:
+            logger.error("Соединение с БД не установлено")
             raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
@@ -153,6 +163,7 @@ class DBManager(DBClass):
                 f" where salary_avg > {self.salary_avg}"
             )
             data_employers = cur.fetchall()
+        logger.info("Вывод в консоль списка всех вакансий, у которых зарплата выше средней по всем вакансиям")
         return data_employers
 
     def get_vacancies_with_keyword(self, list_words: list) -> list[dict[str, Any]]:
@@ -198,10 +209,12 @@ class DBManager(DBClass):
         print(select_words)
 
         if self.conn is None:
+            logger.error("Соединение с БД не установлено")
             raise ValueError("Соединение с БД не установлено")
 
         with self.conn.cursor() as cur:
             cur.execute(select_words)
             data = cur.fetchall()
+        logger.info(f"Вывод в консоль списка всех вакансий, в названии которых содержатся слова {list_words}")
 
         return data

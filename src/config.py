@@ -15,8 +15,6 @@ filename_vacan = os.path.join(DATA_DIR, "vacancies.json")
 
 area_hh = 104  # Челябинск
 
-
-
 def config(
     filename: str = "database.ini",
     section: str = "postgresql"

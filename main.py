@@ -9,10 +9,9 @@ logger = app_logger.get_logger("main.log")
 
 def main():
     logger.info("Начало работы программы")
-    print("Добро пожаловать в систему поиска вакансий!")
+    print("Добро пожаловать в систему работы с вакансиями!")
     print("=" * 50)
     logger.info("=" * 50)
-    # sign_create_db = 0  # Флаг: создана ли БД
 
     while True:
         print("\nВыберите действие:")
@@ -47,6 +46,7 @@ def main():
             create_database("hh_ru", params)
             save_data_to_database(data, "hh_ru", params)
             print("Запись в базу завершена")
+            logger.info("Запись в базу завершена")
 
         elif choice == "2" or choice == "3" or choice == "4" or choice == "5" or choice == "6":
             try:
@@ -88,6 +88,7 @@ def main():
                 db_manager.close_conn()  # Закрываем соединение после всех операций
             except Exception as e:
                 print(e)
+                logger.error("Сперва создайте БД, выбрав пункт 1")
                 print("Сперва создайте БД, выбрав пункт 1")
 
         elif choice == "7":
